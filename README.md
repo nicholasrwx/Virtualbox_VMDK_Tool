@@ -15,7 +15,7 @@ Since the built-in readers are no longer recognized as a USB device, you have to
 ### Youtube Source Describing Problem
 https://youtu.be/hXIP97sBCXg
 
-### VirtualBox Documentation On SD Card Mapping
+### Related VirtualBox Documentation
 [VB Manual - VirtualBox Advanced Storage Configuration](https://www.virtualbox.org/manual/topics/AdvancedTopics.html#adv-storage-config)
 
 ### Screenshots:
