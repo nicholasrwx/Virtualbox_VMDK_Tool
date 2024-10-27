@@ -26,7 +26,7 @@ https://youtu.be/hXIP97sBCXg
 #### Action Menu:
 ![Action Menu](https://github.com/nicholasrwx/Virtualbox_VMDK_Tool/blob/main/Images/3-Action-Menu.png)
 
-### COMMANDS:
+### VBoxManage Commands:
 - **Discard Saved State:**
   - `.\VBoxManage discardstate vm-guid`
 - **Remove Attached:**
@@ -45,7 +45,7 @@ https://youtu.be/hXIP97sBCXg
 - **Add Attached:**
   - `.\VBoxManage storageattach vm-guid --storagectl "SATA" --port # --device # --type hdd --medium path-to-file.vdmk -or- device-guid`
 
-## Acquiring Physical Disk Information ( Windows ) ##
+### Physical Disk Information ( Windows )
 - Get the entire physical disk path via cmd prompt:
   - `wmic diskdrive list brief`
 
@@ -59,7 +59,7 @@ https://youtu.be/hXIP97sBCXg
   - detail disk
   - exit
 
-## Physical Drive Addresses ##
+### Physical Drive Addresses
 - This is a DeviceID used to directly access a physical disk on a windows system:
   - `\\.\PHYSICALDRIVEX`
 
