@@ -26,7 +26,7 @@ https://youtu.be/hXIP97sBCXg
 #### Action Menu:
 ![Action Menu](https://github.com/nicholasrwx/Virtualbox_VMDK_Tool/blob/main/Images/3-Action-Menu.png)
 
-### VBoxManage Commands:
+### Commands:
 - **Discard Saved State:**
   - `.\VBoxManage discardstate vm-guid`
 - **Remove Attached:**
