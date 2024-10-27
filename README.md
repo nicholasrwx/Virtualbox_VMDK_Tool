@@ -4,7 +4,7 @@
 When attempting to attach a built-in sdcard reader to a virtual machine, like you would any other usb device, I discovered it is not recognized as a usb device anymore.
 
 ### Solution
-Since the built-in readers are no longer recognized as a USB device, you have to map it to a vmdk file and access the raw disk. Although you can create stand alone vmdk files in Virtualbox, the UI itself does not have a vmdk-to-sdcard mapping option. However, the documentation provides a way to use VBoxManage.exe to map an sdcard ( connected via built-in reader ) to a vmdk file. This scripted tool automates and simplifies the process by making a user friendly console application to handle this scenario.
+Since the built-in readers are no longer recognized as a USB device, you have to map it to a vmdk file and access the raw disk. Although you can create stand alone vmdk files in Virtualbox, the UI itself does not have a vmdk-to-sdcard mapping option. However, the documentation does provide a way to manually do this via VBoxManage.exe. This scripted tool automates and simplifies this process by making a user friendly console application to handle this scenario.
 
 🔴 **```NOTE: Script finalization is still in progress.```** 
 
