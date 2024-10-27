@@ -1,11 +1,15 @@
 ## Overview
-Virtualbox UI does not have a vmdk-to-sdcard mapping option. However, the documentation provides a way to use VBoxManage.exe to map an sdcard ( connected via builtin reader ) to a vmdk file.
-This scripted tool automates and simplifies the process by making a user friendly console application to handle this scenario.
+
+### Issue
+When attempting to attach a built-in sdcard reader to a virtual machine, like you would any other usb device, I discovered it is not recognized as a usb device anymore.
+
+### Solution
+Since the built-in readers are no longer recognized as a USB device, you have to map it to a vmdk file and access the raw disk. Although you can create stand alone vmdk files in Virtualbox, the UI itself does not have a vmdk-to-sdcard mapping option. However, the documentation provides a way to use VBoxManage.exe to map an sdcard ( connected via built-in reader ) to a vmdk file. This scripted tool automates and simplifies the process by making a user friendly console application to handle this scenario.
 
 🔴 **```NOTE: Script finalization is still in progress.```** 
 
 ### Purpose Of Script
-1) Primarily it was an opportunity to really learn and expand my powershell capabilities.
+1) I seen this issue as an opportunity to learn and advance my powershell capabilities.
 2) There should be an available option for this in Virtualbox UI if VBoxManage.exe has the capability and is providing a way.
 
 ### Youtube Source Describing Problem
@@ -14,6 +18,7 @@ https://youtu.be/hXIP97sBCXg
 ### VirtualBox Documentation On SD Card Mapping
 [VB Manual - VirtualBox Advanced Storage Configuration](https://www.virtualbox.org/manual/topics/AdvancedTopics.html#adv-storage-config)
 
+### Screenshots:
 #### VM Menu:
 ![VM Menu](https://github.com/nicholasrwx/Virtualbox_VMDK_Tool/blob/main/Images/1-VM-Menu.png)
 #### Device Menu:
@@ -21,7 +26,7 @@ https://youtu.be/hXIP97sBCXg
 #### Action Menu:
 ![Action Menu](https://github.com/nicholasrwx/Virtualbox_VMDK_Tool/blob/main/Images/3-Action-Menu.png)
 
-## COMMANDS ##
+### COMMANDS:
 - **Discard Saved State:**
   - `.\VBoxManage discardstate vm-guid`
 - **Remove Attached:**
@@ -40,7 +45,7 @@ https://youtu.be/hXIP97sBCXg
 - **Add Attached:**
   - `.\VBoxManage storageattach vm-guid --storagectl "SATA" --port # --device # --type hdd --medium path-to-file.vdmk -or- device-guid`
 
-## Acquiring Physical Disk Information For Windows ##
+## Acquiring Physical Disk Information ( Windows ) ##
 - Get the entire physical disk path via cmd prompt:
   - `wmic diskdrive list brief`
 
