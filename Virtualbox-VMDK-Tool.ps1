@@ -1,10 +1,6 @@
 $virtualMachines = @()
 $deviceInfo = @()
-$finalDeviceInfo = @()
-$subDeviceInfo = @()
 $deviceOptions = @()
-# $controllers = @()		 # Split the second menu into two
-# $controllerDevices = @()   # Attached and NoN-Attached Devices
 $userSelections = @{ }
 $virtualMachine = New-Object PSObject -Property ([ordered]@{ "Option" = [string]::Empty; "VmName" = [string]::Empty; "VmGuid" = [string]::Empty })
 $virtualMachineInfo = [string]::Empty
@@ -14,7 +10,7 @@ $dev = "Device"
 $act = "Actions"
 $vBoxManagePath = Get-ChildItem -Path C:\ -Recurse -File -Filter VBoxManage.exe -ErrorAction SilentlyContinue `
 | Select-Object -First 1 | ForEach-Object { $_.FullName }
-$vmRegex = '"([^"]+)"\s*{([^}]+)}' # Improve
+$vmRegex = '"([^"]+)"\s*{([^}]+)}'
 $deviceRegex = "(\d+):\s'([^']\w+)'(?:.*Port\s([0-9]+))(?:.*UUID:\s([a-zA-Z0-9-]+)?)?(?:\s*.*Location:\s`"([^`"]+)`"?)?"
 $physicalDriveRegex = "(?=Partitions\s:\s([0-9]*)DeviceID\s*:\s([\\\.a-zA-Z0-9]*)Model\s*:\s([a-zA-Z0-9\s\._-]*)" +
 "Size\s*:\s([0-9]*)Caption\s*:\s([\w\s\._-]*(?=Partitions|$)))"
@@ -119,7 +115,7 @@ try
 				}
 			}
 		}
-		
+
 		# Create List Of Controller and Device Information
 		$controllerAndDeviceInfo = $virtualMachineInfo.Split('#').Where({ -not [string]::IsNullOrEmpty($_) })
 		$optionNumber = 0
@@ -128,28 +124,16 @@ try
 			$_ -split [regex]::Escape($port) | ForEach-Object {
 				$controllersAndDevices += $port + $_
 			}
-			
+
 			# Remove Controller Info and Create Devices Array
 			$devices = [System.Collections.ArrayList]::new($controllersAndDevices)
 			$controllerInfo = [string]::Empty
 			if ($controllersAndDevices[0] -match $controllerRegex)
 			{
 				$controllerInfo = $matches[1]
-				######	Write-Host $controllerInfo ( I will have to create another regex like the device regex below )
 				$devices.RemoveAt(0)
 			}
-			
-			######
-			# create a list of controllers, with a sublist of devices
-			# Each VM has one or more controllers
-			# Each Controller has one or more devices
-			# Each Device has one or more properties
-			
-			# display the controllers
-			
-			# displays the devices of the selected controllers
-			######
-			
+
 			$devices | ForEach-Object {
 				$deviceInfo = $_
 				$deviceOption = $optionNumber.ToString() + $controllerInfo + $deviceInfo
@@ -186,7 +170,7 @@ $selectedDevice = $deviceOptions | ForEach-Object {
 	}
 }
 
-# Present a List Of Actions To Perform On The Selected Device Until The User Quits  
+# Present a List Of Actions To Perform On The Selected Device Until The User Quits
 While (!$quit)
 {
 	BuildTable($actions)
@@ -230,7 +214,7 @@ While (!$quit)
 		}
 		"q" {
 			$userConfirmation = Read-Host "Are you sure you would like to quit? (y or n)"
-			if ($userConfirmation = "y")
+			if ($userConfirmation -eq "y")
 			{
 				$quit = $true
 			}
@@ -244,7 +228,7 @@ While (!$quit)
 # Virtual Machine Action Methods
 class VmActions {
 	VmActions() { }
-	
+
 	# Discard The Saved State Of The Selected Devices Virtual Machine
 	DiscardSavedState( `
 		[string]$vBoxManagePath, `
@@ -260,7 +244,7 @@ class VmActions {
 			Write-Error "Discarding State Failed: $_"
 		}
 	}
-	
+
 	# Remove The Device A User Selected From A Virtual Machine
 	RemoveAttachedDevice( `
 		[string]$vBoxManagePath, `
@@ -285,7 +269,7 @@ class VmActions {
 			Write-Error "Removing Attached Storage Device Failed: $_"
 		}
 	}
-	
+
 	# Close The Device That Was Attached To A Virtual Machine
 	CloseDisk([string]$vBoxManagePath, [string]$deviceLocation)
 	{
@@ -299,7 +283,7 @@ class VmActions {
 			Write-Error "Closing Medium Failed: $_"
 		}
 	}
-	
+
 	# Delete A VMDK File That Was Attached To A Virtual Machine
 	DeleteRelatedFiles( `
 		[string]$devicePath) `
@@ -314,7 +298,7 @@ class VmActions {
 			Write-Host "Deleting File Failed: "
 		}
 	}
-	
+
 	# Create A New VMDK File(s)
 	CreateRelatedFiles( `
 		[string]$vBoxManagePath, `
@@ -405,7 +389,7 @@ class VmActions {
 			}
 		}
 	}
-	
+
 	# Attach A New VMDK File To A New Or Existing SATA Controller On The Virtual Machine
 	AttachDevice( `
 		[string]$vBoxManagePath, `
