@@ -1,20 +1,24 @@
 $virtualMachines = @()
 $deviceInfo = @()
 $deviceOptions = @()
+$controllerOptions = @()
 $userSelections = @{ }
+$controllerAndDevice = @{}
+$controllersAndDevices = @{ }
 $virtualMachine = New-Object PSObject -Property ([ordered]@{ "Option" = [string]::Empty; "VmName" = [string]::Empty; "VmGuid" = [string]::Empty })
 $virtualMachineInfo = [string]::Empty
 $attachPath = [string]::Empty
 $vm = "VirtualMachine"
+$con = "Controller"
 $dev = "Device"
 $act = "Actions"
 $vBoxManagePath = Get-ChildItem -Path C:\ -Recurse -File -Filter VBoxManage.exe -ErrorAction SilentlyContinue `
 | Select-Object -First 1 | ForEach-Object { $_.FullName }
 $vmRegex = '"([^"]+)"\s*{([^}]+)}'
-$deviceRegex = "(\d+):\s'([^']\w+)'(?:.*Port\s([0-9]+))(?:.*UUID:\s([a-zA-Z0-9-]+)?)?(?:\s*.*Location:\s`"([^`"]+)`"?)?"
+$deviceRegex = "(?:Port\s([0-9]+),\sUnit\s[0-9]+:\sUUID:\s([a-zA-Z0-9-]+)\s*.*Location:\s`"([^`"]+)`")"
 $physicalDriveRegex = "(?=Partitions\s:\s([0-9]*)DeviceID\s*:\s([\\\.a-zA-Z0-9]*)Model\s*:\s([a-zA-Z0-9\s\._-]*)" +
 "Size\s*:\s([0-9]*)Caption\s*:\s([\w\s\._-]*(?=Partitions|$)))"
-$controllerRegex = "(?:[0-9]+(:.*)Bootable)"
+$controllerRegex = "(?:([0-9]+):\s'([a-zA-Z0-9\s]+)',\sType:\s([a-zA-Z0-9]+))"
 $vBoxManageRegex = "VBoxManage\.exe"
 $startParsingValue = "Storage Controllers:"
 $endParsingValue = "NIC 1:"
@@ -116,41 +120,58 @@ try
 			}
 		}
 
-		# Create List Of Controller and Device Information
-		$controllerAndDeviceInfo = $virtualMachineInfo.Split('#').Where({ -not [string]::IsNullOrEmpty($_) })
-		$optionNumber = 0
-		$controllerAndDeviceInfo | ForEach-Object {
-			$controllersAndDevices = @()
-			$_ -split [regex]::Escape($port) | ForEach-Object {
-				$controllersAndDevices += $port + $_
-			}
+		# Create List Of Controller Information and a Dictionary of Associated Controller Device Information
+		$controllerInformation = $virtualMachineInfo.Split('#').Where({ -not [string]::IsNullOrEmpty($_) })
+		$controllerOption = 1
+		$deviceOption = 1
 
-			# Remove Controller Info and Create Devices Array
-			$devices = [System.Collections.ArrayList]::new($controllersAndDevices)
-			$controllerInfo = [string]::Empty
-			if ($controllersAndDevices[0] -match $controllerRegex)
-			{
-				$controllerInfo = $matches[1]
-				$devices.RemoveAt(0)
-			}
+		$controllerInformation | ForEach-Object {
+			$controllerOrDevice = [string]::Empty
+			$previousKey = [string]::Empty
+			$controllerKey = [string]::Empty
+		 	$_ -split [regex]::Escape($port) | ForEach-Object {
+						$controllerOrDevice = $port + $_
+					if ($controllerOrDevice -match $controllerRegex)
+					{
+						$controllerKey = $matches[2]
+						
+						if ([string]::IsNullOrEmpty($previousKey))
+						{
+							$previousKey = $controllerKey
+						}
 
-			$devices | ForEach-Object {
-				$deviceInfo = $_
-				$deviceOption = $optionNumber.ToString() + $controllerInfo + $deviceInfo
-				if ($deviceOption -match $deviceRegex)
-				{
-					$deviceOptions += New-Object PSObject -Property ([ordered]@{
-							"Option"		 = $matches[1]
+						if (!$controllersAndDevices.ContainsKey($controllerKey))
+						{
+							$controllersAndDevices[$controllerKey] = @()
+						}
+						
+						$controllerOptions += New-Object PSObject -Property ([ordered]@{
+							"Option"		 = $controllerOption.ToString()
 							"ControllerName" = $matches[2]
-							"Port"		     = $matches[3]
-							"DeviceGuid"	 = $matches[4]
-							"Location"	     = $matches[5]
+							"ControllerType" = $matches[3]
 						})
-					$optionNumber++
+						$controllerOption++
+					} 
+					elseif ($controllerOrDevice -match $deviceRegex)
+					{
+							if (-not $previousKey.Equals($controllerKey))
+							{							
+							$previousKey = $controllerKey
+								$deviceOption = 1
+							}
+
+						$controllersAndDevices[$controllerKey] +=
+							New-Object PSObject -Property ([ordered]@{
+							"Option"		 = $deviceOption
+							"Port"		     = $matches[1]
+							"DeviceGuid"	 = $matches[2]
+							"Location"	     = $matches[3]
+						})
+						$deviceOption++
+					}
 				}
 			}
 		}
-	}
 }
 catch
 {
@@ -158,12 +179,35 @@ catch
 }
 finally
 {
-	BuildTable($deviceOptions)
+	BuildTable($controllerOptions)
 }
+$userSelections[$con] = Read-Host "Please Select An Option"
+
+# Get The Device Information Selected By The User
+try
+{
+	if ($userSelections[$con] -gt $controllerOptions.Count)
+	{
+		throw "Option number ( $userSelections[$con] ) is not available. Please re-enter an option number."
+	}
+	else
+	{
+		$controller = $controllerOptions[[int]$userSelections[$con]-1]
+		$controllerAndDevice[$con] = $controller
+		$key = $controller.ControllerName
+		$deviceOptions = $controllersAndDevices[$key]
+		BuildTable($deviceOptions)
+	}
+}
+catch 
+{
+ Write-Host "Error Accessing Controller Devices: $_"
+}
+
 $userSelections[$dev] = Read-Host "Please Select An Option"
 
 # Get The Device Information Selected By The User
-$selectedDevice = $deviceOptions | ForEach-Object {
+$controllerAndDevice[$dev] = $deviceOptions | ForEach-Object {
 	if ($_.Option -eq [int]$userSelections[$dev].ToString())
 	{
 		return $_
@@ -186,9 +230,9 @@ While (!$quit)
 			$vmActions.RemoveAttachedDevice( `
 				$vBoxManagePath, `
 				$virtualMachine.VmName, `
-				$selectedDevice.ControllerName, `
-				$selectedDevice.Port, `
-				$selectedDevice.DeviceGuid)
+				$controllerAndDevice[$con].ControllerName, `
+				$controllerAndDevice[$dev].Port, `
+				$controllerAndDevice[$dev].DeviceGuid)
 		}
 		"3" {
 			$vmActions.CloseDisk( `
