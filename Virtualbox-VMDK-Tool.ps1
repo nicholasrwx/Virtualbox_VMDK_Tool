@@ -131,56 +131,61 @@ try {
 
 		# Create List Of Controller Information and a Dictionary of Associated Controller Device Information
 		$controllerInformation = $virtualMachineInfo.Split('#').Where({ -not [string]::IsNullOrEmpty($_) })
-		$controllerInformation | ForEach-Object {
-			$controllerOrDevice = [string]::Empty
-			$previousKey = [string]::Empty
-			$controllerKey = [string]::Empty
-			$_ -split [regex]::Escape($port) | ForEach-Object {
-				$controllerOrDevice = $port + $_
-				if ($controllerOrDevice -match $controllerRegex) {
-					$controllerKey = $matches[2]
+		
+		if ($controllerInformation.Count -gt 0) {
+			$controllerInformation | ForEach-Object {
+				$controllerOrDevice = [string]::Empty
+				$previousKey = [string]::Empty
+				$controllerKey = [string]::Empty
+				$_ -split [regex]::Escape($port) | ForEach-Object {
+					$controllerOrDevice = $port + $_
+					if ($controllerOrDevice -match $controllerRegex) {
+						$controllerKey = $matches[2]
 						
-					if ([string]::IsNullOrEmpty($previousKey)) {
-						$previousKey = $controllerKey
-					}
+						if ([string]::IsNullOrEmpty($previousKey)) {
+							$previousKey = $controllerKey
+						}
 
-					if (!$controllersAndDevices.ContainsKey($controllerKey)) {
-						$controllersAndDevices[$controllerKey] = @()
-					}
+						if (!$controllersAndDevices.ContainsKey($controllerKey)) {
+							$controllersAndDevices[$controllerKey] = @()
+						}
 						
-					$controllers += New-Object PSObject -Property ([ordered]@{
-							"Option"         = $controllerOption.ToString()
-							"ControllerName" = $matches[2]
-							"ControllerType" = $matches[3]
-						})
-					$controllerOption++
-				} 
-				elseif ($controllerOrDevice -match $deviceRegex) {
-					if (-not $previousKey.Equals($controllerKey)) {							
-						$previousKey = $controllerKey
-						$deviceOption = 1
-					}
+						$controllers += New-Object PSObject -Property ([ordered]@{
+								"Option"         = $controllerOption.ToString()
+								"ControllerName" = $matches[2]
+								"ControllerType" = $matches[3]
+							})
+						$controllerOption++
+					} 
+					elseif ($controllerOrDevice -match $deviceRegex) {
+						if (-not $previousKey.Equals($controllerKey)) {							
+							$previousKey = $controllerKey
+							$deviceOption = 1
+						}
 
-					$controllersAndDevices[$controllerKey] +=
-					New-Object PSObject -Property ([ordered]@{
-							"Option"     = $deviceOption
-							"Port"       = $matches[1]
-							"DeviceGuid" = $matches[2]
-							"Location"   = $matches[3]
-						})
-					$deviceOption++
+						$controllersAndDevices[$controllerKey] +=
+						New-Object PSObject -Property ([ordered]@{
+								"Option"     = $deviceOption
+								"Port"       = $matches[1]
+								"DeviceGuid" = $matches[2]
+								"Location"   = $matches[3]
+							})
+						$deviceOption++
+					}
 				}
 			}
+			BuildTable($controllers)
+			$userSelections[$con] = Read-Host "Please Select An Option"
+		}
+		else {
+			throw "No Controllers were found for the vm: $($virtualMachine.VmName)"
 		}
 	}
 }
 catch {
-	Write-Host "Error While Parsing: $_"
+	Write-Host $_
+	exit
 }
-finally {
-	BuildTable($controllers)
-}
-$userSelections[$con] = Read-Host "Please Select An Option"
 
 # Get The Device Information Selected By The User
 try {
