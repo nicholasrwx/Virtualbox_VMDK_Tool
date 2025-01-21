@@ -32,7 +32,8 @@ $act = "Actions"
 $startParsingValue = "Storage Controllers:"
 $endParsingValue = "NIC 1:"
 $vmdk = ".vmdk"
-$partitionedvmdk = "-pt.vmdk"
+$dashPartitionVmdk = "-pt.vmdk"
+$dotPartitionVmdk = ".pt.vmdk"
 $attachPath = [string]::Empty
 $virtualMachineInfo = [string]::Empty
 
@@ -60,6 +61,7 @@ $deviceRegex = "(?:Port\s([0-9]+),\sUnit\s[0-9]+:\sUUID:\s([a-zA-Z0-9-]+)\s*.*Lo
 $controllerRegex = "(?:([0-9]+):\s'([a-zA-Z0-9\s]+)',\sType:\s([a-zA-Z0-9]+))"
 $physicalDriveRegex = "(?=Partitions\s:\s([0-9]*)DeviceID\s*:\s([\\\.a-zA-Z0-9]*)Model\s*:\s([a-zA-Z0-9\s\._-]*)" +
 "Size\s*:\s([0-9]*)Caption\s*:\s([\w\s\._-]*(?=Partitions|$)))"
+$fileNameRegex = "(?:([a-zA-Z0-9\s\w_-]*))"
 
 # instance containing action methods
 $vmActions = [VmActions]::new()
@@ -159,7 +161,7 @@ try {
 							})
 						$controllerOption++
 					} 
-					elseif (($controllerOrDevice.Contains($vmdk) -or $controllerOrDevice.Contains($partitionedvmdk)) -and $controllerOrDevice -match $deviceRegex) {
+					elseif ($controllerOrDevice.Contains($vmdk) -and $controllerOrDevice -match $deviceRegex) {
 						if (-not $previousKey.Equals($controllerKey)) {							
 							$previousKey = $controllerKey
 							$deviceOption = 1
@@ -245,13 +247,21 @@ While (!$quit) {
 		}
 		"4" {
 			$vmActions.DeleteRelatedFiles( `
-					$controllerAndDevice[$dev].Location)
+					$controllerAndDevice[$dev].Location,
+				$vmdk,
+				$dashPartitionVmdk,
+				$dotPartitionVmdk)
 		}
 		"5" {
 			$attachPath = $vmActions.CreateRelatedFiles( `
 					$vboxManagePath, `
 					$controllerAndDevice[$dev].Location, `
-					$physicalDriveRegex)
+					$physicalDriveRegex, `
+					$fileNameRegex, `
+					$vmdk, `
+					$dev, `
+					$deviceOption, `
+					$controllerAndDevice)
 		}
 		"6" {
 			$vmActions.AttachDevice( `
@@ -326,14 +336,36 @@ class VmActions {
 
 	# Delete A VMDK File That Was Attached To A Virtual Machine
 	DeleteRelatedFiles( `
-			[string]$devicePath) `
+			[string]$devicePath,
+		[string]$vmdk,
+		[string]$dashPartitionVmdk,
+		[string]$dotPartitionVmdk) `
 	{
 		try {
-			Write-Host $devicePath
-			Remove-Item -Path $devicePath -Force
+			if ($devicePath.Length) {
+				Write-Host "Deleting VMDK File: $devicePath"
+				Remove-Item -Path $devicePath -Force
+
+				# Check for vmdk partition file and, if found, delete it
+				$dashPartitionPath = $devicePath -replace $vmdk, $dashPartitionVmdk
+				$dotPartitionPath = $devicePath -replace $vmdk, $dotPartitionVmdk
+				$dashPartitionExists = Test-Path $dashPartitionPath
+				$dotPartitionExists = Test-Path $dotPartitionPath
+				if ($dashPartitionPath.Length -gt 0 -and $dashPartitionExists) {
+					Write-Host "Deleting VMDK Partition File: $dashPartitionPath"
+					Remove-Item -Path $dashPartitionPath -Force
+				}
+				elseif ($dotPartitionPath.Length -gt 0 -and $dotPartitionExists) {
+					Write-Host "Deleting VMDK Partition File: $dotPartitionPath"
+					Remove-Item -Path $dotPartitionPath -Force
+				}
+				else {
+					Write-Host "Did not find any accompanying partition files to delete in VMDK file folder. :)"
+				}
+			}
 		}
 		catch {
-			Write-Host "Deleting File Failed: "
+			Write-Host "Deleting File Failed: $_"
 		}
 	}
 
@@ -341,7 +373,12 @@ class VmActions {
 	CreateRelatedFiles( `
 			[string]$vBoxManagePath, `
 			[string]$oldDevicePath, `
-			[string]$physicalDriveRegex) `
+			[string]$physicalDriveRegex,
+		[string]$fileNameRegex,
+		[string]$vmdk,
+		[string]$dev,
+		[int]$deviceOption,
+		$controllerAndDevice) `
 	{
 		$physicalDriveInfo = [string]::Empty
 		$physicalDrives = @()
@@ -399,9 +436,9 @@ class VmActions {
 			$oldDevicePath
 		}
 		else {
-			$fileName = Read-Host "Please Enter a File Name"
+			$fileName = Read-Host "Please Enter a File Name ( Without Extension )"
 			$folderPath = Read-Host "Please Enter a Folder Path"
-			if ($fileName -match "(?:([a-zA-Z0-9\s\w_-]*)\..*)") {
+			if ($fileName -match $fileNameRegex) {
 				Write-Host "Filename is Valid: $fileName"
 				if (Test-Path -Path $folderPath -PathType Container) {
 					Write-Host "Folder Is Valid: $folderPath"
@@ -409,10 +446,19 @@ class VmActions {
 						$folderPath = $folderPath.Substring(0, $folderPath.Length - 1)
 					}
 					& $vBoxManagePath internalcommands createrawvmdk `
-						-filename "$($folderPath)\$($fileName)" `
+						-filename "$($folderPath)\$($fileName)$($vmdk)" `
 						-rawdisk $driveOptions[$option].DeviceID `
 						-partitions $partitions
 					$folderPath
+
+					if (-not $controllerAndDevice[$dev] -or $controllerAndDevice[$dev]::IsNullOrEmpty) {
+						$controllerAndDevice[$dev] = New-Object PSObject -Property ([ordered]@{
+								"Option"     = $deviceOption
+								"Port"       = 1
+								"DeviceGuid" = [string]::Empty
+								"Location"   = "$($folderPath)\$($fileName)$($vmdk)"
+							})
+					}
 				}
 			}
 		}
