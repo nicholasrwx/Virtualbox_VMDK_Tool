@@ -31,6 +31,8 @@ $dev = "Device"
 $act = "Actions"
 $startParsingValue = "Storage Controllers:"
 $endParsingValue = "NIC 1:"
+$vmdk = ".vmdk"
+$partitionedvmdk = "-pt.vmdk"
 $attachPath = [string]::Empty
 $virtualMachineInfo = [string]::Empty
 
@@ -157,7 +159,7 @@ try {
 							})
 						$controllerOption++
 					} 
-					elseif ($controllerOrDevice -match $deviceRegex) {
+					elseif (($controllerOrDevice.Contains($vmdk) -or $controllerOrDevice.Contains($partitionedvmdk)) -and $controllerOrDevice -match $deviceRegex) {
 						if (-not $previousKey.Equals($controllerKey)) {							
 							$previousKey = $controllerKey
 							$deviceOption = 1
@@ -239,24 +241,24 @@ While (!$quit) {
 		"3" {
 			$vmActions.CloseDisk( `
 					$vBoxManagePath, `
-					$selectedDevice.Location)
+					$controllerAndDevice[$dev].Location)
 		}
 		"4" {
 			$vmActions.DeleteRelatedFiles( `
-					$selectedDevice.Location)
+					$controllerAndDevice[$dev].Location)
 		}
 		"5" {
 			$attachPath = $vmActions.CreateRelatedFiles( `
 					$vboxManagePath, `
-					$selectedDevice.Location, `
+					$controllerAndDevice[$dev].Location, `
 					$physicalDriveRegex)
 		}
 		"6" {
 			$vmActions.AttachDevice( `
 					$vboxManagePath, `
-					$selectedDevice.ControllerName, `
+					$controllerAndDevice[$con].ControllerName, `
 					$virtualMachine.VmName, `
-					$selectedDevice.Port)
+					$controllerAndDevice[$dev].Port)
 		}
 		"q" {
 			$userConfirmation = Read-Host "Are you sure you would like to quit? (y or n)"
