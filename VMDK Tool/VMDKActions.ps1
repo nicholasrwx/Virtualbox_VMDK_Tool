@@ -1,5 +1,3 @@
-. ".\VMDKHelpers.ps1"
-
 # Virtual Machine Action Methods
 class VMDKActions {
 	VMDKActions() { }
